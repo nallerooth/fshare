@@ -2,14 +2,6 @@ package server
 
 import "fmt"
 
-type Config struct {
-	Passphrase string
-	Port       uint
-	Salt       string
-	URL        string
-	Workdir    string
-}
-
 // ERRORS BELOW
 
 type FileNotFoundError struct {
