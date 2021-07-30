@@ -36,7 +36,12 @@ func (s *Server) validateConfig() error {
 	return nil
 }
 
-func (s *Server) Listen() error {
+func (s *Server) Start() error {
+	err := s.LoadWorkdir()
+	if err != nil {
+		return fmt.Errorf("error loading workdir: %s", err)
+	}
+
 	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.config.Port))
 	if err != nil {
 		return err
@@ -44,7 +49,8 @@ func (s *Server) Listen() error {
 	defer listener.Close()
 
 	// TODO: verbose check
-	fmt.Println("Listening on TCP port ", s.config.Port)
+	fmt.Println("Listening on TCP port", s.config.Port)
+	fmt.Printf("Currently serving %d files found in workdir\n", len(s.AvailableFiles()))
 
 	for {
 		conn, err := listener.Accept()

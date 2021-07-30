@@ -9,7 +9,9 @@ import (
 // hashFileName returns a hash of the salted filename
 func (s *Server) hashFileName(filename string) string {
 	saltedName := filename + s.config.Salt
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(saltedName)))
+	hash := sha256.Sum256([]byte(saltedName))
+	shortHash := fmt.Sprintf("%x", hash)[:16] // Tail of hash should be ok, probably
+	return shortHash
 }
 
 func (s *Server) findFile(files HashFileMap, hash string) (*File, error) {
@@ -39,8 +41,9 @@ func (s *Server) LoadWorkdir() error {
 				return err
 			}
 			mapped[s.hashFileName(f.Name())] = &File{
-				Filename: string(f.Name()),
-				Size:     fileInfo.Size(),
+				Filename:  string(f.Name()),
+				Size:      fileInfo.Size(),
+				CreatedAt: fileInfo.ModTime().Unix(),
 			}
 		}
 	}

@@ -3,9 +3,9 @@ package server
 import "fmt"
 
 type File struct {
-	Filename string
-	Size     int64
-	// TODO: Add created at
+	Filename  string
+	Size      int64
+	CreatedAt int64
 }
 
 func (f *File) String() string {
@@ -13,7 +13,7 @@ func (f *File) String() string {
 }
 
 func (f *File) HumanSize() string {
-	units := []string{"B", "KB", "MB", "GB"}
+	units := []string{"", "K", "M", "G"}
 
 	s := float64(f.Size)
 	unit := 0
@@ -21,5 +21,5 @@ func (f *File) HumanSize() string {
 		s /= 1024
 	}
 
-	return fmt.Sprintf("%.2f %s", s, units[unit])
+	return fmt.Sprintf("%.2f%s", s, units[unit])
 }

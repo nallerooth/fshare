@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"time"
 
 	"github.com/nallerooth/fshare/common"
 )
@@ -58,32 +57,21 @@ func (s *Server) processMessage(c net.Conn, msg common.Message) {
 }
 
 func (s *Server) sendList(c net.Conn) error {
-	strResp := ""
-	files := s.AvailableFiles()
+	payload := []byte(s.fileListFormatter(s.AvailableFiles(), false))
 
-	for hash, name := range files {
-		strResp += fmt.Sprintf("%s\t%s\n", hash, name)
-	}
-
-	payload := []byte(strResp)
 	msg := common.Message{
 		Type:   common.Text,
 		Length: uint64(len(payload)),
 	}
 
-	fmt.Printf("Response Meta: %+v\n", msg)
-
 	buf := bytes.Buffer{}
 	err := binary.Write(&buf, binary.BigEndian, msg)
-	fmt.Printf("Inspeciton:\n%+v, \n%+v\n", msg, buf.Bytes())
 	if err != nil {
 		return err
 	}
 
 	c.Write(buf.Bytes())
 	c.Write(payload)
-
-	time.Sleep(time.Millisecond * 100)
 
 	fmt.Println("DONE")
 	return nil

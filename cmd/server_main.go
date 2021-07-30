@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 
 	"github.com/nallerooth/fshare/server"
 )
@@ -32,14 +31,5 @@ func main() {
 		panic(err)
 	}
 
-	err = s.LoadWorkdir()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading workdir: %s\n", err)
-	}
-
-	for hash, name := range s.AvailableFiles() {
-		fmt.Println(hash, " -> ", name)
-	}
-
-	s.Listen()
+	s.Start()
 }
