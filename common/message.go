@@ -25,7 +25,7 @@ const (
 type Message struct {
 	Type     MessageType
 	Length   uint64
-	Checksum [32]byte
+	Filename [32]byte
 }
 
 func NewFileMessage(filename string) *Message {
