@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 
 	"github.com/nallerooth/fshare/common"
 )
@@ -85,8 +86,7 @@ func (s *Server) sendList(c net.Conn) error {
 }
 
 func (s *Server) receiveFile(c net.Conn, msg common.Message) error {
-	// TODO: Clean filename
-	filename := string(msg.Filename[:])
+	_, filename := filepath.Split(string(msg.Filename[:]))
 
 	// Temporary storage
 	tmpFile, err := ioutil.TempFile(s.config.Workdir, "upload_*.tmp")
