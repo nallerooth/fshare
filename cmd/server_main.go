@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/nallerooth/fshare/server"
 )
@@ -31,5 +32,8 @@ func main() {
 		panic(err)
 	}
 
-	s.Start()
+	err = s.Start()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Server error: %s\n", err)
+	}
 }
