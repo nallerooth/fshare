@@ -86,7 +86,7 @@ func (s *Server) sendList(c net.Conn) error {
 }
 
 func (s *Server) receiveFile(c net.Conn, msg common.Message) error {
-	_, filename := filepath.Split(string(msg.Filename[:]))
+	_, filename := filepath.Split(string(msg.Target[:]))
 
 	// Temporary storage
 	tmpFile, err := ioutil.TempFile(s.config.Workdir, "upload_*.tmp")

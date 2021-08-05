@@ -6,7 +6,7 @@
 *.dylib
 
 # Dev workdir
-cmd/data/
+workdir/
 
 # Test binary, built with `go test -c`
 *.test

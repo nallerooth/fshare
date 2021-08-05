@@ -24,6 +24,7 @@ func init() {
 
 	flag.Parse()
 }
+
 func main() {
 	fmt.Printf("%+v\n\n", config)
 

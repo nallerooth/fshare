@@ -20,12 +20,13 @@ const (
 	DeleteFile
 	List
 	Text
+	Search
 )
 
 type Message struct {
-	Type     MessageType
-	Length   uint64
-	Filename [32]byte
+	Type   MessageType
+	Length uint64
+	Target [32]byte
 }
 
 func NewFileMessage(filename string) *Message {
