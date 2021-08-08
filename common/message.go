@@ -18,6 +18,7 @@ const (
 	Ping
 	File
 	DeleteFile
+	DeleteHash
 	List
 	Text
 	Search

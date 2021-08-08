@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -18,17 +19,70 @@ var clientConfig = client.Config{
 	RemotePort: 32000,
 }
 
-func connectAndSend(msg *common.Message, target *string) error {
+// TODO: Add support for remote alias
+func connectToRemote() (net.Conn, error) {
 	connStr := fmt.Sprintf("%s:%d", clientConfig.RemoteURL, clientConfig.RemotePort)
+	return net.Dial("tcp", connStr)
+}
 
-	conn, err := net.Dial("tcp", connStr)
+// TODO: Handle timeout of reads
+func readBytes(c net.Conn, bytesToRead uint64) ([]byte, error) {
+	if bytesToRead == 0 {
+		return nil, errors.New("attempted to read 0 bytes")
+	}
+	buf := make([]byte, 0, bytesToRead)
+	bRead := uint64(0)
+
+	for bRead < bytesToRead {
+		n, err := c.Read(buf)
+		if err != nil {
+			return nil, err
+		}
+		bRead += uint64(n)
+	}
+
+	return buf, nil
+}
+
+func readMessageType(c net.Conn) (common.MessageType, error) {
+	resBuf, err := readBytes(c, 1)
+	if err != nil {
+		return 0, err
+	}
+	var val common.MessageType
+	err = binary.Read(bytes.NewReader(resBuf), binary.BigEndian, &val)
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
+}
+
+func readUint64(c net.Conn) (uint64, error) {
+	resBuf, err := readBytes(c, 8)
+	if err != nil {
+		return 0, err
+	}
+	var val uint64
+	err = binary.Read(bytes.NewReader(resBuf), binary.BigEndian, &val)
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
+}
+
+// TODO: readBytes(c net.Conn) ([]byte, error) {}
+
+func connectAndSend(msg *client.InternalClientMessage) error {
+	conn, err := connectToRemote()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
 	buf := &bytes.Buffer{}
-	err = binary.Write(buf, binary.BigEndian, *msg)
+	err = binary.Write(buf, binary.BigEndian, msg.Type)
 	if err != nil {
 		return fmt.Errorf("Error converting message to bytes: %s", err)
 	}
@@ -38,29 +92,23 @@ func connectAndSend(msg *common.Message, target *string) error {
 		return fmt.Errorf("Error writing to connection: %s", err)
 	}
 
-	if target != nil {
-		fmt.Printf("Received target: %s\n", *target)
-	}
-
-	resp := common.Message{}
-	responseBuffer := make([]byte, 41)
-
 	running := true
 	for running {
 
-		_, err = conn.Read(responseBuffer)
+		respType, err := readMessageType(conn)
 		if err != nil {
 			return err
 		}
-		err = binary.Read(bytes.NewReader(responseBuffer), binary.BigEndian, &resp)
-		if err != nil {
-			return fmt.Errorf("Error in binary.Read: %s", err)
-		}
 
-		switch resp.Type {
+		switch respType {
 		case common.Text:
-			if resp.Length > 0 {
-				payload := make([]byte, resp.Length)
+			// Read length of response
+			respLen, err := readUint64(conn)
+			if err != nil {
+				return err
+			}
+			if respLen > 0 {
+				payload := make([]byte, respLen)
 				_, err = conn.Read(payload)
 				if err != nil {
 					return fmt.Errorf("read common.Text: %s", err)
@@ -138,21 +186,21 @@ func main() {
 		// TODO: Print usage
 	}
 
-	var msg *client.InternalClientMessage
+	msg := &client.InternalClientMessage{
+		Type: command,
+	}
 
 	switch command {
 	case common.List:
-		msg = &client.InternalClientMessage{
-			Type: command,
-		}
 	case common.File:
-		msg = &client.InternalClientMessage{
-			Type:          common.File,
-			LocalFilename: target,
-		}
+		msg.LocalFilename = target
+	case common.DeleteFile:
+		msg.RemoteFilename = target
+	case common.DeleteHash:
+		msg.Sha256sum = target
 	}
 
-	err = connectAndSend(msg, target)
+	err = connectAndSend(msg)
 	if err != nil {
 		fmt.Println(err)
 	}
