@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -25,27 +24,8 @@ func connectToRemote() (net.Conn, error) {
 	return net.Dial("tcp", connStr)
 }
 
-// TODO: Handle timeout of reads
-func readBytes(c net.Conn, bytesToRead uint64) ([]byte, error) {
-	if bytesToRead == 0 {
-		return nil, errors.New("attempted to read 0 bytes")
-	}
-	buf := make([]byte, 0, bytesToRead)
-	bRead := uint64(0)
-
-	for bRead < bytesToRead {
-		n, err := c.Read(buf)
-		if err != nil {
-			return nil, err
-		}
-		bRead += uint64(n)
-	}
-
-	return buf, nil
-}
-
 func readMessageType(c net.Conn) (common.MessageType, error) {
-	resBuf, err := readBytes(c, 1)
+	resBuf, err := common.ReadBytes(c, 1)
 	if err != nil {
 		return 0, err
 	}
@@ -59,7 +39,7 @@ func readMessageType(c net.Conn) (common.MessageType, error) {
 }
 
 func readUint64(c net.Conn) (uint64, error) {
-	resBuf, err := readBytes(c, 8)
+	resBuf, err := common.ReadBytes(c, 8)
 	if err != nil {
 		return 0, err
 	}
@@ -71,8 +51,6 @@ func readUint64(c net.Conn) (uint64, error) {
 
 	return val, nil
 }
-
-// TODO: readBytes(c net.Conn) ([]byte, error) {}
 
 func connectAndSend(msg *client.InternalClientMessage) error {
 	conn, err := connectToRemote()
@@ -156,7 +134,7 @@ func parseCommand() (common.MessageType, string, error) {
 		if err != nil {
 			return -1, "", err
 		}
-		return common.File, file, nil
+		return common.FileTransfer, file, nil
 
 	case "list":
 		return common.List, "", nil
@@ -166,14 +144,14 @@ func parseCommand() (common.MessageType, string, error) {
 		if err != nil {
 			return -1, "", err
 		}
-		return common.DeleteFile, name, nil
+		return common.FileDelete, name, nil
 
 	case "search":
 		name, err := getTarget()
 		if err != nil {
 			return -1, "", err
 		}
-		return common.Search, name, nil
+		return common.FileSearch, name, nil
 	}
 
 	return -1, "", fmt.Errorf("Invalid command '%s'", command)
@@ -192,12 +170,10 @@ func main() {
 
 	switch command {
 	case common.List:
-	case common.File:
+	case common.FileTransfer:
 		msg.LocalFilename = target
-	case common.DeleteFile:
+	case common.FileDelete:
 		msg.RemoteFilename = target
-	case common.DeleteHash:
-		msg.Sha256sum = target
 	}
 
 	err = connectAndSend(msg)

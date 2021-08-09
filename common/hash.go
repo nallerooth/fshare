@@ -1,6 +1,6 @@
 package common
 
-func hashFile(filename string) []byte {
+func HashFile(filename string) []byte {
 	// TODO: Implement
 	return make([]byte, 1)
 }

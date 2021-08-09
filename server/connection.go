@@ -10,11 +10,12 @@ import (
 	"path/filepath"
 
 	"github.com/nallerooth/fshare/common"
+	message "github.com/nallerooth/fshare/common/messages"
 )
 
 func (s *Server) HandleConnection(c net.Conn) {
 	fmt.Println("Got a connection from", c.RemoteAddr())
-	msg := common.Message{}
+	var msg common.MessageType
 
 	// TODO: Update size to match common.Message
 	// int8 + uint64 + [32 bytes]filename
@@ -34,30 +35,25 @@ func (s *Server) HandleConnection(c net.Conn) {
 	}
 }
 
-func (s *Server) processMessage(c net.Conn, msg common.Message) error {
+func (s *Server) processMessage(c net.Conn, mType common.MessageType) error {
 	var err error
 
-	switch msg.Type {
+	switch mType {
 	case common.List:
 		if err = s.sendList(c); err != nil {
 			return fmt.Errorf("processMessage: %s", err)
 		}
-	case common.File:
+	case common.FileTransfer:
 		fmt.Println("Process file")
-		if err := s.receiveFile(c, msg); err != nil {
+		if err := s.receiveFile(c); err != nil {
 			return fmt.Errorf("processMessage: %s", err)
 		}
-	case common.DeleteFile:
+	case common.FileDelete:
 		fmt.Println("process delete file")
 	}
 
 	// Message processing done, send quit command to client
-	quitMsg := common.Message{
-		Type: common.Quit,
-	}
-	buf := &bytes.Buffer{}
-	binary.Write(buf, binary.BigEndian, quitMsg)
-	c.Write(buf.Bytes())
+	c.Write([]byte{byte(common.Quit)})
 
 	c.Close()
 
@@ -67,8 +63,7 @@ func (s *Server) processMessage(c net.Conn, msg common.Message) error {
 func (s *Server) sendList(c net.Conn) error {
 	payload := []byte(s.fileListFormatter(s.AvailableFiles(), false))
 
-	msg := common.Message{
-		Type:   common.Text,
+	msg := message.TextMessage{
 		Length: uint64(len(payload)),
 	}
 
@@ -85,8 +80,13 @@ func (s *Server) sendList(c net.Conn) error {
 	return nil
 }
 
-func (s *Server) receiveFile(c net.Conn, msg common.Message) error {
-	_, filename := filepath.Split(string(msg.Target[:]))
+func (s *Server) receiveFile(c net.Conn) error {
+	msg := message.FileTransferMessage{}
+	err := msg.ReadFromConn(c)
+	if err != nil {
+		return err
+	}
+	_, filename := filepath.Split(string(msg.Filename[:]))
 
 	// Temporary storage
 	tmpFile, err := ioutil.TempFile(s.config.Workdir, "upload_*.tmp")
