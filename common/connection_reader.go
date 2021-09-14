@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/binary"
 	"errors"
 	"net"
 )
@@ -22,4 +23,8 @@ func ReadBytes(c net.Conn, bytesToRead uint64) ([]byte, error) {
 	}
 
 	return buf, nil
+}
+
+func ReadMessage(c net.Conn, msg *Message) error {
+	return binary.Read(c, binary.BigEndian, msg)
 }

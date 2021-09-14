@@ -15,30 +15,39 @@ import (
 
 func (s *Server) HandleConnection(c net.Conn) {
 	fmt.Println("Got a connection from", c.RemoteAddr())
-	var msg common.MessageType
-
-	// TODO: Update size to match common.Message
-	// int8 + uint64 + [32 bytes]filename
-	msgType := make([]byte, 41)
-	buf := bytes.NewBuffer(msgType)
-
-	numBytes, err := c.Read(msgType)
-
-	// Convert bytes into struct
+	msg := common.Message{}
+	err := common.ReadMessage(c, &msg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error in connection %s: %s", c.RemoteAddr(), err)
-	} else {
-		binary.Read(buf, binary.BigEndian, &msg)
-		fmt.Printf("%d bytes received from %s: %+v\n", numBytes, c.RemoteAddr(), msg)
-		s.processMessage(c, msg)
-		c.Close()
+		fmt.Fprintln(os.Stderr, "Error reading message from client: ", err)
 	}
+	s.processMessage(c, msg)
+	c.Close()
+	/*
+		var msg common.MessageType
+
+		// TODO: Update size to match common.Message
+		// int8 + uint64 + [32 bytes]filename
+		msgType := make([]byte, 41)
+		buf := bytes.NewBuffer(msgType)
+
+		numBytes, err := c.Read(msgType)
+
+		// Convert bytes into struct
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error in connection %s: %s", c.RemoteAddr(), err)
+		} else {
+			binary.Read(buf, binary.BigEndian, &msg)
+			fmt.Printf("%d bytes received from %s: %+v\n", numBytes, c.RemoteAddr(), msg)
+			s.processMessage(c, msg)
+			c.Close()
+		}
+	*/
 }
 
-func (s *Server) processMessage(c net.Conn, mType common.MessageType) error {
+func (s *Server) processMessage(c net.Conn, msg common.Message) error {
 	var err error
 
-	switch mType {
+	switch msg.Command {
 	case common.List:
 		if err = s.sendList(c); err != nil {
 			return fmt.Errorf("processMessage: %s", err)

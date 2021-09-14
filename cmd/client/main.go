@@ -52,20 +52,14 @@ func readUint64(c net.Conn) (uint64, error) {
 	return val, nil
 }
 
-func connectAndSend(msg *client.InternalClientMessage) error {
+func connectAndSend(msg *common.Message) error {
 	conn, err := connectToRemote()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	buf := &bytes.Buffer{}
-	err = binary.Write(buf, binary.BigEndian, msg.Type)
-	if err != nil {
-		return fmt.Errorf("Error converting message to bytes: %s", err)
-	}
-
-	_, err = conn.Write(buf.Bytes())
+	err = binary.Write(conn, binary.BigEndian, msg)
 	if err != nil {
 		return fmt.Errorf("Error writing to connection: %s", err)
 	}
@@ -122,61 +116,59 @@ func getTarget() (string, error) {
 	return "", fmt.Errorf("Invalid target")
 }
 
-func parseCommand() (common.MessageType, string, error) {
+func createMessageFromArguments() (*common.Message, error) {
+	msg := &common.Message{}
+	name := ""
+
 	command, err := getCommand()
 	if err != nil {
-		return -1, "", err
+		return nil, err
 	}
 
 	switch command {
 	case "upload":
-		file, err := getTarget()
+		name, err = getTarget()
 		if err != nil {
-			return -1, "", err
+			return nil, err
 		}
-		return common.FileTransfer, file, nil
+		msg.Command = common.FileTransfer
 
 	case "list":
-		return common.List, "", nil
+		msg.Command = common.List
 
 	case "delete":
-		name, err := getTarget()
+		name, err = getTarget()
 		if err != nil {
-			return -1, "", err
+			return nil, err
 		}
-		return common.FileDelete, name, nil
+		msg.Command = common.FileDelete
 
 	case "search":
-		name, err := getTarget()
+		name, err = getTarget()
 		if err != nil {
-			return -1, "", err
+			return nil, err
 		}
-		return common.FileSearch, name, nil
+		msg.Command = common.FileSearch
+
+	default:
+		return nil, fmt.Errorf("Invalid command '%s'", command)
 	}
 
-	return -1, "", fmt.Errorf("Invalid command '%s'", command)
+	// Set msg.Name = name
+	// TODO: Make sure to grab the file extension, if available
+	copy(msg.Name[:], []byte(name))
+	return msg, nil
 }
 
 func main() {
-	command, target, err := parseCommand()
+	msg, err := createMessageFromArguments()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		// TODO: Print usage
 	}
 
-	msg := &client.InternalClientMessage{
-		Type: command,
-	}
-
-	switch command {
-	case common.List:
-	case common.FileTransfer:
-		msg.LocalFilename = target
-	case common.FileDelete:
-		msg.RemoteFilename = target
-	}
-
 	err = connectAndSend(msg)
+	fmt.Printf("%+v\n", msg)
 	if err != nil {
 		fmt.Println(err)
 	}
