@@ -1,6 +1,6 @@
 package client
 
-import "github.com/nallerooth/fshare/common"
+import "github.com/nallerooth/fshare/internal/common"
 
 type InternalClientMessage struct {
 	Type           common.MessageType

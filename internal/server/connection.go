@@ -9,10 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/nallerooth/fshare/common"
-	message "github.com/nallerooth/fshare/common/messages"
+	"github.com/nallerooth/fshare/internal/common"
+	message "github.com/nallerooth/fshare/internal/common/messages"
 )
 
+// HandleConnection is the entry point for a newly established TCP connection
 func (s *Server) HandleConnection(c net.Conn) {
 	fmt.Println("Got a connection from", c.RemoteAddr())
 	msg := common.Message{}
@@ -20,6 +21,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading message from client: ", err)
 	}
+	fmt.Printf("Got a message of type: %+v\n", msg)
 	s.processMessage(c, msg)
 	c.Close()
 	/*

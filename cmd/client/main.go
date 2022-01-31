@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/nallerooth/fshare/client"
-	"github.com/nallerooth/fshare/common"
+	"github.com/nallerooth/fshare/internal/client"
+	"github.com/nallerooth/fshare/internal/common"
 )
 
 var clientConfig = client.Config{

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nallerooth/fshare/server"
+	"github.com/nallerooth/fshare/internal/server"
 )
 
 var config = server.Config{
@@ -28,7 +28,7 @@ func init() {
 func main() {
 	fmt.Printf("%+v\n\n", config)
 
-	s, err := server.New(config)
+	s, err := server.NewServer(config)
 	if err != nil {
 		panic(err)
 	}

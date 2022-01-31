@@ -5,6 +5,8 @@ import (
 	"net"
 )
 
+// Config is a temporary struct for keeping track of settings
+// TODO: Move to a proper settings package
 type Config struct {
 	Passphrase string
 	Port       uint
@@ -13,12 +15,14 @@ type Config struct {
 	Workdir    string
 }
 
+// Server is the main data storage and socket owner
 type Server struct {
 	config Config
 	files  HashFileMap
 }
 
-func New(config Config) (*Server, error) {
+// NewServer creates a new server with the given config, but does not start it.
+func NewServer(config Config) (*Server, error) {
 	s := &Server{
 		config: config,
 		files:  HashFileMap{},
@@ -36,6 +40,7 @@ func (s *Server) validateConfig() error {
 	return nil
 }
 
+// Start sets up a TCP socket in listening mode and waits for connections
 func (s *Server) Start() error {
 	err := s.LoadWorkdir()
 	if err != nil {

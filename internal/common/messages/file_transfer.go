@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"net"
 
-	"github.com/nallerooth/fshare/common"
+	"github.com/nallerooth/fshare/internal/common"
 )
 
 type FileTransferMessage struct {
