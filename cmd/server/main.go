@@ -5,30 +5,36 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nallerooth/fshare/internal/config"
 	"github.com/nallerooth/fshare/internal/server"
 )
 
-var config = server.Config{
-	Port:       32000,
-	Passphrase: "",
-	Salt:       "<change_me>",
-	URL:        "https://nallerooth.com/share/",
-	Workdir:    "./data/",
+// Default config, will be overridden by flags
+var conf = config.Config{
+	Server: config.ServerConfig{
+		Port:      32000,
+		PublicURL: "https://nallerooth.com/fshare/",
+		Workdir:   "",
+		Salt:      "<change_me>",
+	},
 }
 
 func init() {
-	flag.UintVar(&config.Port, "port", config.Port, "Listening port")
-	flag.StringVar(&config.Passphrase, "pass", config.Passphrase, "Passphrase for uploading files [optional]")
-	flag.StringVar(&config.Salt, "salt", config.Salt, "Salt")
-	flag.StringVar(&config.Workdir, "wd", config.Workdir, "Workdir")
+	flag.UintVar(&conf.Server.Port, "port", conf.Server.Port, "Listening port")
+	flag.StringVar(&conf.Passphrase, "pass", conf.Passphrase, "Passphrase for uploading files [optional]")
+	flag.StringVar(&conf.Server.Salt, "salt", conf.Server.Salt, "Salt")
+	flag.StringVar(&conf.Server.Workdir, "wd", conf.Server.Workdir, "Workdir")
+	flag.StringVar(&conf.Server.PublicURL, "url", conf.Server.PublicURL, "Public URL to reach shared files")
 
 	flag.Parse()
 }
 
 func main() {
-	fmt.Printf("%+v\n\n", config)
+	fmt.Printf("%+v\n\n", conf)
 
-	s, err := server.NewServer(config)
+	// TODO: verify that a valid config has been loaded (either flags or conf file)
+
+	s, err := server.NewServer(conf)
 	if err != nil {
 		panic(err)
 	}

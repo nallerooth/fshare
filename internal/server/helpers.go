@@ -11,7 +11,7 @@ import (
 const maxFilenameLength = 30
 
 func (s *Server) fileListFormatter(hfm HashFileMap, showTime bool) string {
-	baseURI := s.config.URL
+	baseURI := s.config.Server.PublicURL
 	res := make([]string, 0, len(hfm))
 
 	for hash, file := range hfm {

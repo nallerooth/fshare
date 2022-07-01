@@ -8,7 +8,7 @@ import (
 
 // hashFileName returns a hash of the salted filename
 func (s *Server) hashFileName(filename string) string {
-	saltedName := filename + s.config.Salt
+	saltedName := filename + s.config.Server.Salt
 	hash := sha256.Sum256([]byte(saltedName))
 	shortHash := fmt.Sprintf("%x", hash)[:16] // Tail of hash should be ok, probably
 	return shortHash
@@ -26,7 +26,7 @@ func (s *Server) findFile(files HashFileMap, hash string) (*File, error) {
 // loadWorkdir loads the files in the specified workdir and calculates hashes
 // for them, allowing fetching files without using the real file name
 func (s *Server) LoadWorkdir() error {
-	files, err := os.ReadDir(s.config.Workdir)
+	files, err := os.ReadDir(s.config.Server.Workdir)
 	if err != nil {
 		return fmt.Errorf("Error: Unable to verify workdir -> %s", err)
 	}

@@ -1,4 +1,4 @@
-package common
+package connection
 
 // HashFile hahses the contents of a file in order to verify the contents
 // by comparing the result with another hash string

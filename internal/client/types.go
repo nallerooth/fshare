@@ -1,9 +1,9 @@
 package client
 
-import "github.com/nallerooth/fshare/internal/common"
+import "github.com/nallerooth/fshare/internal/connection"
 
 type InternalClientMessage struct {
-	Type           common.MessageType
+	Type           connection.MessageType
 	LocalFilename  string
 	CleanFilename  string
 	RemoteFilename string

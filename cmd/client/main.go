@@ -7,39 +7,25 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 
-	"github.com/nallerooth/fshare/internal/client"
-	"github.com/nallerooth/fshare/internal/common"
+	"github.com/nallerooth/fshare/internal/config"
+	"github.com/nallerooth/fshare/internal/connection"
+	"github.com/nallerooth/fshare/internal/message"
 )
 
-var clientConfig = client.Config{
-	Passphrase: "",
-	RemoteURL:  "localhost",
-	RemotePort: 32000,
-}
-
-// TODO: Add support for remote alias
-func connectToRemote() (net.Conn, error) {
-	connStr := fmt.Sprintf("%s:%d", clientConfig.RemoteURL, clientConfig.RemotePort)
-	return net.Dial("tcp", connStr)
-}
-
-func readMessageType(c net.Conn) (common.MessageType, error) {
-	resBuf, err := common.ReadBytes(c, 1)
+func readMessage(c net.Conn) (*message.Message, error) {
+	msg := &message.Message{}
+	err := connection.ReadMessage(c, msg)
 	if err != nil {
-		return 0, err
-	}
-	var val common.MessageType
-	err = binary.Read(bytes.NewReader(resBuf), binary.BigEndian, &val)
-	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	return val, nil
+	return msg, nil
 }
 
 func readUint64(c net.Conn) (uint64, error) {
-	resBuf, err := common.ReadBytes(c, 8)
+	resBuf, err := connection.ReadBytes(c, 8)
 	if err != nil {
 		return 0, err
 	}
@@ -52,47 +38,60 @@ func readUint64(c net.Conn) (uint64, error) {
 	return val, nil
 }
 
-func connectAndSend(msg *common.Message) error {
-	conn, err := connectToRemote()
+func connectAndSend(conf config.Config, msg *message.Message) error {
+	conn, err := connection.NewClientConnection(conf.Client)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	err = binary.Write(conn, binary.BigEndian, msg)
+	buf := bytes.Buffer{}
+	err = binary.Write(&buf, binary.BigEndian, msg)
 	if err != nil {
 		return fmt.Errorf("Error writing to connection: %s", err)
 	}
 
-	running := true
-	for running {
-
-		respType, err := readMessageType(conn)
-		if err != nil {
-			return err
-		}
-
-		switch respType {
-		case common.Text:
-			// Read length of response
-			respLen, err := readUint64(conn)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		running := true
+		for running {
+			msg, err := readMessage(conn)
 			if err != nil {
-				return err
-			}
-			if respLen > 0 {
-				payload := make([]byte, respLen)
-				_, err = conn.Read(payload)
-				if err != nil {
-					return fmt.Errorf("read common.Text: %s", err)
-				}
-				fmt.Println(string(payload))
+				fmt.Println("go routine error: ", err)
+				return
 			}
 
-		case common.Quit:
-			fmt.Printf("\nReceived end of transmission\n")
-			running = false
+			switch msg.Command {
+			case message.Text:
+				// Read length of response
+				if msg.DataLength > 0 {
+					payload := make([]byte, msg.DataLength)
+					_, err = conn.Read(payload)
+					if err != nil {
+						return
+					}
+					fmt.Println(string(payload))
+				}
+
+			case message.Quit:
+				fmt.Printf("\nReceived end of transmission\n")
+				running = false
+				wg.Done()
+
+			default:
+				fmt.Println("unknown message type")
+			}
 		}
+
+	}()
+
+	_, err = conn.Write(buf.Bytes())
+	if err != nil {
+		return err
 	}
+
+	wg.Wait()
 
 	return nil
 }
@@ -116,8 +115,8 @@ func getTarget() (string, error) {
 	return "", fmt.Errorf("Invalid target")
 }
 
-func createMessageFromArguments() (*common.Message, error) {
-	msg := &common.Message{}
+func createMessageFromArguments() (*message.Message, error) {
+	var msg message.Message
 	name := ""
 
 	command, err := getCommand()
@@ -131,24 +130,24 @@ func createMessageFromArguments() (*common.Message, error) {
 		if err != nil {
 			return nil, err
 		}
-		msg.Command = common.FileTransfer
+		msg.Command = message.FileTransfer
 
 	case "list":
-		msg.Command = common.List
+		msg = message.NewList()
 
 	case "delete":
 		name, err = getTarget()
 		if err != nil {
 			return nil, err
 		}
-		msg.Command = common.FileDelete
+		msg.Command = message.FileDelete
 
 	case "search":
 		name, err = getTarget()
 		if err != nil {
 			return nil, err
 		}
-		msg.Command = common.FileSearch
+		msg.Command = message.FileSearch
 
 	default:
 		return nil, fmt.Errorf("Invalid command '%s'", command)
@@ -157,18 +156,25 @@ func createMessageFromArguments() (*common.Message, error) {
 	// Set msg.Name = name
 	// TODO: Make sure to grab the file extension, if available
 	copy(msg.Name[:], []byte(name))
-	return msg, nil
+	return &msg, nil
 }
 
 func main() {
+	config := config.Config{
+		Passphrase: "",
+		Client: config.ClientConfig{
+			ServerURL:  "localhost",
+			ServerPort: 32000,
+		},
+	}
+
 	msg, err := createMessageFromArguments()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		// TODO: Print usage
 	}
 
-	err = connectAndSend(msg)
-	fmt.Printf("%+v\n", msg)
+	err = connectAndSend(config, msg)
 	if err != nil {
 		fmt.Println(err)
 	}
